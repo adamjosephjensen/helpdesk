@@ -6,4 +6,5 @@ export interface Item {
 export function getItems(): Promise<Item[]>;
 export function createItem(value: string): Promise<void>;
 export function updateItem(id: string, value: string): Promise<void>;
+export function deleteItem(id: string): Promise<void>;
 export function subscribeToItems(handleChange: (payload: any) => void): { unsubscribe: () => void }; 

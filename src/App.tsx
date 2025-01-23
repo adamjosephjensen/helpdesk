@@ -3,37 +3,63 @@ import {
   getItems,
   createItem,
   updateItem,
+  deleteItem,
   subscribeToItems,
   Item
-} from 'ItemsService'
+} from './ItemsService'
 import {
   signIn,
   signOut,
   getCurrentUser,
   User
-} from 'authService'
+} from './authService'
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [newVal, setNewVal] = useState('')
   const [email, setEmail] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // fetch user on load
-    getCurrentUser().then(setUser)
+    getCurrentUser().then(setUser).catch(console.error)
   }, [])
 
   useEffect(() => {
     // if logged in, load items & subscribe
     if (user) {
       loadItems()
-      const channel = subscribeToItems(() => {
-        loadItems()
-      })
+      let subscription: { unsubscribe: () => void }
+      
+      const setupSubscription = async () => {
+        subscription = await subscribeToItems((payload) => {
+          setItems(currentItems => {
+            switch (payload.type) {
+              case 'INSERT':
+                return [...currentItems, payload.new]
+              case 'UPDATE':
+                return currentItems.map(item => 
+                  item.id === payload.new.id ? payload.new : item
+                )
+              case 'DELETE':
+                return currentItems.filter(item => 
+                  item.id !== payload.old.id
+                )
+              default:
+                return currentItems
+            }
+          })
+        })
+      }
+      
+      setupSubscription()
+      
       return () => {
-        // unsubscribe
-        channel.unsubscribe()
+        if (subscription) {
+          subscription.unsubscribe()
+        }
       }
     }
   }, [user])
@@ -49,11 +75,16 @@ export default function App() {
 
   async function handleSignIn() {
     if (!email) return
+    setError(null)
+    setIsLoading(true)
     try {
       await signIn(email)
-      alert('check your inbox')
+      alert('Check your email for the login link')
     } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to sign in')
       console.error(err)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -64,12 +95,23 @@ export default function App() {
 
   async function handleCreate() {
     if (!newVal) return
-    await createItem(newVal)
-    setNewVal('')
+    try {
+      setError(null)
+      await createItem(newVal)
+      setNewVal('')
+      // Remove loadItems call since we'll get the update via subscription
+    } catch (err) {
+      console.error('Failed to create item:', err)
+      setError(err instanceof Error ? err.message : 'Failed to create item')
+    }
   }
 
-  async function handleUpdate(id, val) {
+  async function handleUpdate(id: string, val: string) {
     await updateItem(id, val)
+  }
+
+  async function handleDelete(id: string) {
+    await deleteItem(id)
   }
 
   return (
@@ -94,19 +136,29 @@ export default function App() {
                   value={item.value}
                   onChange={(e) => handleUpdate(item.id, e.target.value)}
                 />
+                <button onClick={() => handleDelete(item.id)}>delete</button>
               </li>
             ))}
           </ul>
         </>
       ) : (
         <div>
+          {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
           <input
             type="email"
+            name="email"
+            autoComplete="email"
             placeholder="your email"
             value={email}
             onChange={e => setEmail(e.target.value)}
+            disabled={isLoading}
           />
-          <button onClick={handleSignIn}>sign in (otp link)</button>
+          <button 
+            onClick={handleSignIn} 
+            disabled={isLoading || !email}
+          >
+            {isLoading ? 'Sending...' : 'sign in (otp link)'}
+          </button>
         </div>
       )}
     </div>
