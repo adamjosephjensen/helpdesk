@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { SupabaseClient } from '@supabase/supabase-js'
 import { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
 export interface Item {
@@ -14,108 +14,148 @@ export type ItemPayload = {
   old?: Item
 }
 
-export async function getItems(): Promise<Item[]> {
-  try {
-    const { data, error } = await supabase.from('items').select('*')
-    if (error) throw error
-    return data
-  } catch (error) {
-    console.error('Error fetching items:', error)
-    throw error
-  }
-}
+export class ItemsService {
+  private activeChannel: ReturnType<SupabaseClient['channel']> | null = null
 
-export async function createItem(value: string): Promise<Item[]> {
-  try {
-    const { data, error } = await supabase
-      .from('items')
-      .insert({ value })
-      .select()
-      
-    if (error) {
-      console.error('Supabase error:', error)
+  constructor(private supabase: SupabaseClient) {}
+
+  async getItems(): Promise<Item[]> {
+    try {
+      const { data, error } = await this.supabase.from('items').select('*')
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching items:', error)
       throw error
     }
+  }
+
+  async createItem(value: string): Promise<Item[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('items')
+        .insert({ value })
+        .select()
+        
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
+      
+      return data
+    } catch (error) {
+      console.error('Error creating item:', error)
+      throw error
+    }
+  }
+
+  async updateItem(id: string, value: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('items')
+        .update({ value })
+        .eq('id', id)
+      if (error) throw error
+    } catch (error) {
+      console.error('Error updating item:', error)
+      throw error
+    }
+  }
+
+  async deleteItem(id: string): Promise<void> {
+    try {
+      const { error } = await this.supabase
+        .from('items')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting item:', error)
+      throw error
+    }
+  }
+
+  subscribeToItems(
+    handleChange: (payload: ItemPayload) => void
+  ): { unsubscribe: () => void } {
+    console.log('Setting up subscription to items...')
     
-    return data
-  } catch (error) {
-    console.error('Error creating item:', error)
-    throw error
-  }
-}
+    if (this.activeChannel) {
+      console.log('Cleaning up existing subscription...')
+      this.activeChannel.unsubscribe()
+      this.activeChannel = null
+    }
 
-export async function updateItem(id: string, value: string): Promise<void> {
-  try {
-    const { error } = await supabase.from('items').update({ value }).eq('id', id)
-    if (error) throw error
-  } catch (error) {
-    console.error('Error updating item:', error)
-    throw error
-  }
-}
+    const channel = this.supabase.channel('items-changes')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*',
+          schema: 'public',
+          table: 'items',
+        },
+        (payload: RealtimePostgresChangesPayload<Item>) => {
+          console.log('Raw event received:', {
+            eventType: payload.eventType,
+            table: payload.table,
+            schema: payload.schema,
+            commit_timestamp: payload.commit_timestamp,
+            payload
+          })
+          
+          switch (payload.eventType) {
+            case 'INSERT':
+              console.log('Processing INSERT:', payload.new)
+              handleChange({ 
+                type: 'INSERT',
+                new: payload.new as Item
+              })
+              break
+            
+            case 'UPDATE':
+              console.log('Processing UPDATE:', payload.new)
+              handleChange({ 
+                type: 'UPDATE',
+                new: payload.new as Item
+              })
+              break
+            
+            case 'DELETE':
+              console.log('Processing DELETE:', payload.old)
+              handleChange({ 
+                type: 'DELETE',
+                old: payload.old as Item
+              })
+              break
+          }
+        }
+      )
+      .on('system', { event: '*' }, (payload: { [key: string]: any }) => {
+        console.log('System event:', payload)
+      })
 
-export async function deleteItem(id: string): Promise<void> {
-  try {
-    const { error } = await supabase.from('items').delete().eq('id', id)
-    if (error) throw error
-  } catch (error) {
-    console.error('Error deleting item:', error)
-    throw error
-  }
-}
+    try {
+      channel.subscribe()
+      console.log('Subscription status:', channel)
+      this.activeChannel = channel
 
-export async function subscribeToItems(
-  handleChange: (payload: ItemPayload) => void
-): Promise<{ unsubscribe: () => void }> {
-  const channel = supabase
-    .channel('items-channel')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'items'
-      },
-      (payload: RealtimePostgresChangesPayload<Item>) => {
-        console.log('Received new item:', payload)
-        handleChange({ type: 'INSERT', new: payload.new as Item })
+      return {
+        unsubscribe: () => {
+          try {
+            console.log('Unsubscribing from items changes...')
+            channel.unsubscribe()
+            if (this.activeChannel === channel) {
+              this.activeChannel = null
+            }
+            console.log('Successfully unsubscribed')
+          } catch (error) {
+            console.error('Error during unsubscribe:', error)
+          }
+        }
       }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'items'
-      },
-      (payload: RealtimePostgresChangesPayload<Item>) => {
-        console.log('Received updated item:', payload)
-        handleChange({ type: 'UPDATE', new: payload.new as Item })
-      }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'items'
-      },
-      (payload: RealtimePostgresChangesPayload<Item>) => {
-        console.log('Received deleted item:', payload)
-        handleChange({ type: 'DELETE', old: payload.old as Item })
-      }
-    )
-    .subscribe()
-
-  console.log('Subscribed to items changes')
-  return {
-    unsubscribe: () => {
-      try {
-        channel.unsubscribe()
-        console.log('Unsubscribed from items changes')
-      } catch (error) {
-        console.error('Error unsubscribing:', error)
-      }
+    } catch (error) {
+      console.error('Failed to subscribe:', error)
+      throw error
     }
   }
 } 

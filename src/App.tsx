@@ -1,12 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import {
-  getItems,
-  createItem,
-  updateItem,
-  deleteItem,
-  subscribeToItems,
-  Item
-} from './ItemsService'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
+import { Item } from './itemsService'
+import { itemsService } from './supabase'
 import {
   signIn,
   signOut,
@@ -21,6 +15,7 @@ export default function App() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const updateTimeoutRef = useRef<number>()
 
   useEffect(() => {
     // fetch user on load
@@ -30,35 +25,67 @@ export default function App() {
   useEffect(() => {
     // if logged in, load items & subscribe
     if (user) {
-      loadItems()
-      let subscription: { unsubscribe: () => void }
+      console.log('User authenticated, setting up items and subscription...')
+      let subscription: { unsubscribe: () => void } | null = null
+      let isActive = true // Track if effect is still active
       
-      const setupSubscription = async () => {
-        subscription = await subscribeToItems((payload) => {
-          setItems(currentItems => {
-            switch (payload.type) {
-              case 'INSERT':
-                return [...currentItems, payload.new]
-              case 'UPDATE':
-                return currentItems.map(item => 
-                  item.id === payload.new.id ? payload.new : item
-                )
-              case 'DELETE':
-                return currentItems.filter(item => 
-                  item.id !== payload.old.id
-                )
-              default:
-                return currentItems
-            }
-          })
-        })
+      const setup = async () => {
+        try {
+          // Load items first
+          await loadItems()
+          
+          // Only set up subscription if component is still mounted
+          if (isActive) {
+            console.log('Setting up subscription...')
+            subscription = itemsService.subscribeToItems((payload) => {
+              if (!isActive) return // Don't update state if unmounted
+              
+              console.log('Received update:', payload)
+              setItems(currentItems => {
+                switch (payload.type) {
+                  case 'INSERT':
+                    if (!payload.new) return currentItems
+                    // Check if we already have this item
+                    if (currentItems.some(item => item.id === payload.new!.id)) {
+                      return currentItems
+                    }
+                    return [...currentItems, payload.new]
+                  
+                  case 'UPDATE':
+                    if (!payload.new) return currentItems
+                    return currentItems.map(item => 
+                      item.id === payload.new!.id ? payload.new : item
+                    )
+                  
+                  case 'DELETE':
+                    if (!payload.old) return currentItems
+                    return currentItems.filter(item => 
+                      item.id !== payload.old!.id
+                    )
+                  
+                  default:
+                    return currentItems
+                }
+              })
+            })
+          }
+        } catch (error) {
+          console.error('Error during setup:', error)
+          // If setup fails, try again after a delay
+          if (isActive) {
+            setTimeout(setup, 2000)
+          }
+        }
       }
-      
-      setupSubscription()
+
+      setup()
       
       return () => {
+        console.log('Cleaning up...')
+        isActive = false
         if (subscription) {
           subscription.unsubscribe()
+          subscription = null
         }
       }
     }
@@ -66,10 +93,12 @@ export default function App() {
 
   async function loadItems() {
     try {
-      const data = await getItems()
+      console.log('Loading items...')
+      const data = await itemsService.getItems()
+      console.log('Items loaded:', data)
       setItems(data || [])
     } catch (err) {
-      console.error(err)
+      console.error('Error loading items:', err)
     }
   }
 
@@ -97,21 +126,36 @@ export default function App() {
     if (!newVal) return
     try {
       setError(null)
-      await createItem(newVal)
+      console.log('Creating new item:', newVal)
+      await itemsService.createItem(newVal)
       setNewVal('')
-      // Remove loadItems call since we'll get the update via subscription
     } catch (err) {
       console.error('Failed to create item:', err)
       setError(err instanceof Error ? err.message : 'Failed to create item')
     }
   }
 
-  async function handleUpdate(id: string, val: string) {
-    await updateItem(id, val)
-  }
+  // Create a debounced update function
+  const debouncedUpdate = useCallback((id: string, value: string) => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current)
+    }
+    updateTimeoutRef.current = window.setTimeout(() => {
+      itemsService.updateItem(id, value)
+    }, 500)
+  }, [])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current)
+      }
+    }
+  }, [])
 
   async function handleDelete(id: string) {
-    await deleteItem(id)
+    await itemsService.deleteItem(id)
   }
 
   return (
@@ -134,7 +178,16 @@ export default function App() {
               <li key={item.id}>
                 <input
                   value={item.value}
-                  onChange={(e) => handleUpdate(item.id, e.target.value)}
+                  onChange={(e) => {
+                    // Update local state immediately
+                    setItems(currentItems =>
+                      currentItems.map(i =>
+                        i.id === item.id ? { ...i, value: e.target.value } : i
+                      )
+                    )
+                    // Debounce the server update
+                    debouncedUpdate(item.id, e.target.value)
+                  }}
                 />
                 <button onClick={() => handleDelete(item.id)}>delete</button>
               </li>
