@@ -1,0 +1,7 @@
+# Environment variables
+*.env
+src/.env
+
+# Ignore files
+.gitignore
+.cursorignore
