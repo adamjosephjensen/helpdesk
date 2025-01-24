@@ -1,5 +1,5 @@
-import { supabase } from './supabase'
-import { User } from '@supabase/supabase-js'
+import { supabase } from '../supabase'
+import { User } from './types'
 
 export async function signIn(email: string): Promise<void> {
   try {
@@ -39,6 +39,4 @@ export async function getCurrentUser(): Promise<User | null> {
     }
     throw error
   }
-}
-
-export type { User } 
+} 

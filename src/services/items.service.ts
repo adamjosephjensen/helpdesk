@@ -1,18 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js'
-import { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-
-export interface Item {
-  id: string
-  value: string
-  created_at: string
-  // Add any other fields from your Supabase table
-}
-
-export type ItemPayload = {
-  type: 'INSERT' | 'UPDATE' | 'DELETE'
-  new?: Item
-  old?: Item
-}
+import { SupabaseClient, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import { Item, ItemPayload } from './types'
 
 export class ItemsService {
   private activeChannel: ReturnType<SupabaseClient['channel']> | null = null

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import { ItemsService } from '../itemsService'
+import { ItemsService } from '../services/items.service'
 
 // Mock Supabase client
 vi.mock('@supabase/supabase-js', () => {
