@@ -1,5 +1,8 @@
 export type CoatingFinish = 'higher_gloss' | 'recommended_gloss' | 'lower_gloss'
-export type TicketStatus = 'Order Received' | 'In Progress' | 'Ready for Pickup' | 'Completed'
+export const COATING_FINISHES: CoatingFinish[] = ['higher_gloss', 'recommended_gloss', 'lower_gloss']
+
+export type TicketStatus = 'Order Received' | 'In Progress' | 'Final Inspection' | 'Completed'
+export const TICKET_STATUSES: TicketStatus[] = ['Order Received', 'In Progress', 'Final Inspection', 'Completed']
 
 export interface Ticket {
   id: string
@@ -18,5 +21,5 @@ export interface CreateTicketDTO {
   customer_name: string
   customer_email: string
   coating_color: string
-  coating_finish?: CoatingFinish  // Made optional since we have a default value
+  coating_finish?: CoatingFinish // Optional since there's a default in DB
 } 

@@ -1,5 +1,6 @@
 import { TicketData, validateTicketCreation } from '../domain/ticket'
-import { TicketRepository, Ticket } from '../repositories/ticketRepository'
+import { TicketRepository } from '../repositories/ticketRepository'
+import { Ticket } from '../types/ticket'
 
 export class TicketService {
   constructor(private repository: TicketRepository) {}
@@ -12,6 +13,10 @@ export class TicketService {
 
     const ticket = await this.repository.create(data)
     return { ticket }
+  }
+
+  async update(id: string, data: Partial<Ticket>): Promise<Ticket> {
+    return this.repository.update(id, data)
   }
 
   async deleteTicket(id: string): Promise<void> {

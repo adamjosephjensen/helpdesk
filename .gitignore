@@ -1,6 +1,7 @@
 # Environment variables
 *.env
 src/.env
+.env.local
 
 # Logs
 logs

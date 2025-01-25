@@ -1,11 +1,21 @@
 :root {
+  /* Theme variables */
+  --color-bg-primary: #1e1e1e;
+  --color-bg-secondary: #181818;
+  --color-bg-tertiary: #252526;
+  --color-text-primary: #d4d4d4;
+  --color-text-secondary: #707070;
+  --color-border: #222;
+  --color-accent: #3ecf8e;
+  --color-link: #646cff;
+  --color-link-hover: #535bf2;
+  
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: dark;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -15,17 +25,16 @@
 
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--color-link);
   text-decoration: inherit;
 }
+
 a:hover {
-  color: #535bf2;
+  color: var(--color-link-hover);
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
 }
@@ -42,27 +51,64 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--color-bg-secondary);
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
-  border-color: #646cff;
+  border-color: var(--color-link);
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+/* Base container styles */
+.container {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Header styles */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  background: var(--color-bg-tertiary);
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+}
+
+.header button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: #ff4444;
+  color: white;
+}
+
+.header button:hover {
+  background: #ff3333;
+}
+
+.header span {
+  color: var(--color-text-primary);
+}
+
+/* Light mode overrides - keeping them but using CSS variables */
 @media (prefers-color-scheme: light) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f0f0f0;
+    --color-bg-tertiary: #f8f8f8;
+    --color-text-primary: #213547;
+    --color-text-secondary: #42526e;
+    --color-border: #ddd;
+    --color-link: #747bff;
   }
 }

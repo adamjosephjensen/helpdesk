@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest'
 import { TicketService } from '../ticketService'
-import { TicketRepository, Ticket } from '../../repositories/ticketRepository'
+import { TicketRepository } from '../../repositories/ticketRepository'
 import { TicketData } from '../../domain/ticket'
+import { Ticket, TicketStatus } from '../../types/ticket'
 
 describe('TicketService', () => {
   const mockTicket: Ticket = {
@@ -21,7 +22,9 @@ describe('TicketService', () => {
     return {
       create: vi.fn(),
       delete: vi.fn(),
-      getAll: vi.fn()
+      getAll: vi.fn(),
+      update: vi.fn(),
+      subscribeToTickets: vi.fn()
     }
   }
 
@@ -83,6 +86,49 @@ describe('TicketService', () => {
 
       expect(mockRepo.getAll).toHaveBeenCalled()
       expect(tickets).toEqual([mockTicket])
+    })
+  })
+
+  describe('update', () => {
+    it('updates ticket status', async () => {
+      const mockRepo = createMockRepository()
+      const service = new TicketService(mockRepo)
+      
+      const ticket = { ...mockTicket, status: 'Order Received' }
+      vi.mocked(mockRepo.update).mockResolvedValue({
+        ...ticket,
+        status: 'In Progress',
+        last_updated: new Date().toISOString()
+      })
+
+      const result = await service.update(ticket.id, { status: 'In Progress' })
+
+      expect(result.status).toBe('In Progress')
+      expect(mockRepo.update).toHaveBeenCalledWith(ticket.id, {
+        status: 'In Progress'
+      })
+    })
+
+    it('updates other ticket fields', async () => {
+      const mockRepo = createMockRepository()
+      const service = new TicketService(mockRepo)
+      
+      const updates = {
+        customer_name: 'Jane Doe',
+        coating_color: 'red'
+      }
+
+      vi.mocked(mockRepo.update).mockResolvedValue({
+        ...mockTicket,
+        ...updates,
+        last_updated: new Date().toISOString()
+      })
+
+      const result = await service.update(mockTicket.id, updates)
+
+      expect(result.customer_name).toBe('Jane Doe')
+      expect(result.coating_color).toBe('red')
+      expect(mockRepo.update).toHaveBeenCalledWith(mockTicket.id, updates)
     })
   })
 }) 

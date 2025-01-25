@@ -4,6 +4,7 @@ import { supabase } from './supabase'
 import { TicketsView } from './components/TicketsView'
 import { SupabaseTicketRepository } from './repositories/ticketRepository'
 import { TicketService } from './services/ticketService'
+import { AuthForm } from './components/AuthForm'
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -30,16 +31,18 @@ export default function App() {
 
   if (!user) {
     return (
-      <div>
-        <button onClick={() => supabase.auth.signInWithOAuth({ provider: 'github' })}>
-          Sign in with GitHub
-        </button>
+      <div className="container">
+        <AuthForm />
       </div>
     )
   }
 
   return (
     <div className="container">
+      <div className="header">
+        <span>Welcome, {user.email}</span>
+        <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
+      </div>
       <TicketsView user={user} ticketService={ticketService} />
     </div>
   )

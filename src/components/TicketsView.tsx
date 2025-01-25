@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { User } from '@supabase/supabase-js'
 import { TicketService } from '../services/ticketService'
 import { TicketData, CoatingFinish } from '../domain/ticket'
-import { Ticket } from '../repositories/ticketRepository'
+import { Ticket } from '../types/ticket'
+import { KanbanBoard } from './KanbanBoard'
+import './KanbanBoard.css'
 
 interface TicketsViewProps {
   user: User
@@ -24,62 +26,88 @@ export function TicketsView({ user, ticketService }: TicketsViewProps) {
     coating_finish: 'recommended_gloss'
   })
   const [errors, setErrors] = useState<string[]>([])
+  const [showForm, setShowForm] = useState(false)
 
   useEffect(() => {
+    console.log('TicketsView mounted')
+    let mounted = true
+
     // Initial load
-    loadTickets()
+    const loadInitialTickets = async () => {
+      try {
+        console.log('Loading tickets...')
+        const tickets = await ticketService.getAllTickets()
+        console.log('Tickets loaded:', tickets)
+        if (mounted) {
+          setTickets(tickets)
+        }
+      } catch (error) {
+        console.error('Error loading tickets:', error)
+        if (mounted) {
+          setErrors([error instanceof Error ? error.message : 'Failed to load tickets'])
+        }
+      }
+    }
+
+    loadInitialTickets()
 
     // Set up subscription
     const subscription = ticketService.subscribeToTickets((payload) => {
+      if (!mounted) return
+      
       console.log('Received ticket update:', payload)
       setTickets(currentTickets => {
-        switch (payload.eventType) {
-          case 'INSERT': {
-            const newTicket = payload.new
-            if (!newTicket) return currentTickets
-            // Check if we already have this ticket
-            if (currentTickets.some(ticket => ticket.id === newTicket.id)) {
-              return currentTickets
+        try {
+          console.log('Current tickets before update:', currentTickets)
+          const { eventType, new: newRecord, old: oldRecord } = payload
+          
+          switch (eventType) {
+            case 'INSERT': {
+              if (!newRecord) return currentTickets
+              // Check if we already have this ticket
+              if (currentTickets.some(ticket => ticket.id === newRecord.id)) {
+                return currentTickets
+              }
+              const newTickets = [newRecord, ...currentTickets]
+              console.log('Tickets after INSERT:', newTickets)
+              return newTickets
             }
-            return [newTicket, ...currentTickets]
+            
+            case 'UPDATE': {
+              if (!newRecord) return currentTickets
+              const newTickets = currentTickets.map(ticket => 
+                ticket.id === newRecord.id ? newRecord : ticket
+              )
+              console.log('Tickets after UPDATE:', newTickets)
+              return newTickets
+            }
+            
+            case 'DELETE': {
+              if (!oldRecord) return currentTickets
+              const newTickets = currentTickets.filter(ticket => 
+                ticket.id !== oldRecord.id
+              )
+              console.log('Tickets after DELETE:', newTickets)
+              return newTickets
+            }
+            
+            default:
+              return currentTickets
           }
-          
-          case 'UPDATE': {
-            const updatedTicket = payload.new
-            if (!updatedTicket) return currentTickets
-            return currentTickets.map(ticket => 
-              ticket.id === updatedTicket.id ? updatedTicket : ticket
-            )
-          }
-          
-          case 'DELETE': {
-            const deletedTicket = payload.old
-            if (!deletedTicket) return currentTickets
-            return currentTickets.filter(ticket => 
-              ticket.id !== deletedTicket.id
-            )
-          }
-          
-          default:
-            return currentTickets
+        } catch (error) {
+          console.error('Error processing ticket update:', error)
+          return currentTickets
         }
       })
     })
 
     // Cleanup subscription
     return () => {
+      console.log('Cleaning up subscription')
+      mounted = false
       subscription.unsubscribe()
     }
   }, [ticketService])
-
-  async function loadTickets() {
-    try {
-      const tickets = await ticketService.getAllTickets()
-      setTickets(tickets)
-    } catch (error) {
-      setErrors([error instanceof Error ? error.message : 'Failed to load tickets'])
-    }
-  }
 
   const validateForm = () => {
     const newErrors: FormErrors = {}
@@ -118,6 +146,7 @@ export function TicketsView({ user, ticketService }: TicketsViewProps) {
         coating_color: '',
         coating_finish: 'recommended_gloss'
       })
+      setShowForm(false)
     } catch (error) {
       setErrors([error instanceof Error ? error.message : 'Failed to create ticket'])
     }
@@ -126,14 +155,21 @@ export function TicketsView({ user, ticketService }: TicketsViewProps) {
   async function handleDelete(id: string) {
     try {
       await ticketService.deleteTicket(id)
-      await loadTickets()
+      // The delete will be handled by the realtime subscription
     } catch (error) {
       setErrors([error instanceof Error ? error.message : 'Failed to delete ticket'])
     }
   }
 
   return (
-    <div>
+    <div className="tickets-view">
+      <div className="tickets-header">
+        <h1>Tickets</h1>
+        <button onClick={() => setShowForm(!showForm)}>
+          {showForm ? 'Cancel' : 'New Ticket'}
+        </button>
+      </div>
+
       {errors.length > 0 && (
         <div role="alert" aria-label="validation error">
           {errors.map((error, index) => (
@@ -142,66 +178,58 @@ export function TicketsView({ user, ticketService }: TicketsViewProps) {
         </div>
       )}
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="customer_name">Customer Name</label>
-          <input
-            id="customer_name"
-            value={formData.customer_name}
-            onChange={e => setFormData({ ...formData, customer_name: e.target.value })}
-            aria-label="customer name"
-          />
-        </div>
+      {showForm && (
+        <form onSubmit={handleSubmit} className="ticket-form">
+          <div>
+            <label htmlFor="customer_name">Customer Name</label>
+            <input
+              id="customer_name"
+              value={formData.customer_name}
+              onChange={e => setFormData({ ...formData, customer_name: e.target.value })}
+              aria-label="customer name"
+            />
+          </div>
 
-        <div>
-          <label htmlFor="customer_email">Customer Email</label>
-          <input
-            id="customer_email"
-            type="email"
-            value={formData.customer_email}
-            onChange={e => setFormData({ ...formData, customer_email: e.target.value })}
-            aria-label="customer email"
-          />
-        </div>
+          <div>
+            <label htmlFor="customer_email">Customer Email</label>
+            <input
+              id="customer_email"
+              type="email"
+              value={formData.customer_email}
+              onChange={e => setFormData({ ...formData, customer_email: e.target.value })}
+              aria-label="customer email"
+            />
+          </div>
 
-        <div>
-          <label htmlFor="coating_color">Coating Color</label>
-          <input
-            id="coating_color"
-            value={formData.coating_color}
-            onChange={e => setFormData({ ...formData, coating_color: e.target.value })}
-            aria-label="coating color"
-          />
-        </div>
+          <div>
+            <label htmlFor="coating_color">Coating Color</label>
+            <input
+              id="coating_color"
+              value={formData.coating_color}
+              onChange={e => setFormData({ ...formData, coating_color: e.target.value })}
+              aria-label="coating color"
+            />
+          </div>
 
-        <div>
-          <label htmlFor="coating_finish">Coating Finish</label>
-          <select
-            id="coating_finish"
-            value={formData.coating_finish}
-            onChange={e => setFormData({ ...formData, coating_finish: e.target.value as CoatingFinish })}
-            aria-label="coating finish"
-          >
-            <option value="recommended_gloss">Recommended Gloss</option>
-            <option value="higher_gloss">Higher Gloss</option>
-            <option value="lower_gloss">Lower Gloss</option>
-          </select>
-        </div>
+          <div>
+            <label htmlFor="coating_finish">Coating Finish</label>
+            <select
+              id="coating_finish"
+              value={formData.coating_finish}
+              onChange={e => setFormData({ ...formData, coating_finish: e.target.value as CoatingFinish })}
+              aria-label="coating finish"
+            >
+              <option value="recommended_gloss">Recommended Gloss</option>
+              <option value="higher_gloss">Higher Gloss</option>
+              <option value="lower_gloss">Lower Gloss</option>
+            </select>
+          </div>
 
-        <button type="submit">Create Ticket</button>
-      </form>
+          <button type="submit">Create Ticket</button>
+        </form>
+      )}
 
-      <ul>
-        {tickets.map(ticket => (
-          <li key={ticket.id} data-testid="ticket">
-            <span data-testid="order-number">{ticket.order_number}</span>
-            <span data-testid="customer-name">{ticket.customer_name}</span>
-            <span data-testid="coating-color">{ticket.coating_color}</span>
-            <span data-testid="coating-finish">{ticket.coating_finish}</span>
-            <button onClick={() => handleDelete(ticket.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
+      <KanbanBoard tickets={tickets} ticketService={ticketService} />
     </div>
   )
 } 
