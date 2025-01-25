@@ -1,0 +1,236 @@
+Assignment 2 Brainlift
+
+- Purpose
+  - My goal is to build a CRM ticketing system, useful for both people and agents, most like Zendesk
+  - Users see simplified status, can only comment
+  - Workers can advance the stage
+  - Managers can mark things done
+- Experts
+  - J.B. Rainsberger (JBrain)
+  - James Bach
+  - Michael Bolton
+- Spiky POVs
+  - "BUGS" as things that just happen is a scam. There are no bugs, there are only mistakes
+  - Integrated Tests are a Scam
+  - Testing and Checking are different activities, and what most people call "tests" should be called "checks"
+    - Checks verify assertions
+    - Tests involve exploring the behavior of a system
+- Knowledge tree
+  - Testing and checking refined (blog post) 
+    - The main idea is that testing and checking are different, and we need different words for them because if all we ever do is check, then we will never do the more exploratory kind of testing required to develop a theory of a program.
+    - [https://www.satisfice.com/blog/archives/856](https://www.satisfice.com/blog/archives/856)
+  - Cannon Test Driven Development
+    - [https://tidyfirst.substack.com/p/canon-tdd](https://tidyfirst.substack.com/p/canon-tdd)
+    - 
+  - Programming as theory building:
+    - [https://pablo.rauzy.name/dev/naur1985programming.pdf](https://pablo.rauzy.name/dev/naur1985programming.pdf)
+    - the idea behind the paper is that software development is a kind of knowledge work where the main activity is developing domain knowledge of an area of life, and how a piece of code responds to the demands of that area. such that a team which didn't develop the software and doesn't have the theory is shit at maintaining the code
+  - Integrated Tests are a Scam
+    - [https://www.reddit.com/r/SoftwareEngineering/comments/xnr83u/integrated_tests_are_a_scam/](https://www.reddit.com/r/SoftwareEngineering/comments/xnr83u/integrated_tests_are_a_scam/)
+    - Key concepts: the point of TDD is that if our design is hard to test then it is a bad design, so if we include tests in the design process then we will write better code overall.
+    - the perfect test tells you exactly where a problem is
+    - an integrated test is a test such that when it fails, the problem could be in one of multiple systems
+    - JBrain has noticed that the software teams with the most integrated tests have the biggest headaches and problems
+    - Testing Pyramid: most people do most of their testing through the user interface, some testing on collections of modules, and little testing on functions. What if you did most of your testing on functions and least in the UI? that would be nice.
+    - The more integrated tests we have, the longer our testing process is and the less feedback we get on our design. The less "testing budget" we have for unit checks is reduced, so the less feedback we get on our design, so the worse our code gets. It's a death spiral that leads to build processes taking 17 hours to run and still shipping bugs because there is a combinatorial number of codepaths and possible integrated tests.
+    - Interfaces, design by contract, collaboration tests and contract tests only. Every layer gets collaboration tests and contract tests. Only the "ring" in the  outer later of stuff that talks to code you didn't write gets integration tests
+- Adam Jensen's User stories and testing notes
+  - # Testing Strategy
+  - This project follows JB Rainsberger's principle of "Integration Tests are a Scam" so "Test One Thing At A Time." We separate tests into distinct layers, each with its own responsibility.
+  - # 🎯 Areas of Excellence:
+  - 1. Domain tests are pure and fast
+  - 1. Service tests verify collaboration without knowing about implementation
+  - 1. epository tests focus on the contract with Supabase
+  - 1. No test knows about implementation details of layers below it
+  - We created a maintainable, testable architecture. The factorial complexity of integration testing has been replaced with linear complexity in each layer.
+  - ## Architecture for Testability
+  - We follow both Ports and Adapters (Hexagonal) and Clean Architecture principles:
+  - 1. **Core Domain** (`src/domain/`)
+    - Contains pure business logic and types
+    - Has no dependencies on external concerns
+    - Defines interfaces (ports) that external layers must implement
+  - 2. **Service Layer** (`src/services/`)
+    - Orchestrates business operations
+    - Depends only on domain interfaces
+    - Acts as a use case layer in Clean Architecture
+  - 3. **Adapters** (`src/repositories/`)
+    - Implement ports defined by domain
+    - Handle external concerns (e.g., Supabase)
+    - Easily swappable (e.g., could replace Supabase with Firebase)
+  - This architecture enables dependency injection, making our code:
+    - Highly testable in isolation
+    - Loosely coupled
+    - Easy to modify without breaking existing code
+  - ## Why Integration Tests are a Scam
+    - As JB Rainsberger explains, integration tests are a scam because:
+    - 1. They give a false sense of confidence
+    - 2. They test too many things at once, making failures hard to diagnose
+    - 3. They grow factorially with system complexity (and factorials eat exponentials for breakfast!)
+    - 4. They're slow and brittle, leading to "test suite bankruptcy"
+    - Instead, we use:
+    - Focused unit tests for business logic
+    - Collaboration tests for boundaries
+    - Contract tests for external dependencies
+  - ## Test Structure
+    - ### Domain Tests (`src/domain/__tests__/ticket.test.ts`)
+    - Tests validation logic
+    - Pure business rules
+    - No dependencies
+    - Fast and deterministic
+    - ### Service Tests (`src/services/__tests__/ticketService.test.ts`)
+    - Tests service collaboration with repository
+    - Verifies business operations
+    - Uses mocked repository
+    - Focuses on orchestration and business workflows
+    - ### Repository Tests (`src/repositories/__tests__/ticketRepository.test.ts`)
+    - Tests Supabase integration
+    - Verifies data persistence
+    - Uses mocked Supabase client
+    - Ensures correct database operations
+  - ## Why This Approach?
+    - We avoid integrated UI tests because:
+    - 1. They are brittle and prone to breaking
+    - 2. They mix multiple concerns (UI, business logic, data persistence)
+    - 3. They are slow and non-deterministic
+    - 4. They make it hard to identify the source of failures
+    - Instead, we test each layer in isolation, which:
+    - 1. Makes tests faster and more reliable
+    - 2. Provides better failure isolation
+    - 3. Makes the codebase easier to maintain and refactor
+    - 4. Follows the Single Responsibility Principle
+  - ## Running Tests
+    - ```bash
+    - # Run all tests
+    - yarn test
+    - # Run tests in watch mode during development
+    - yarn test:watch
+    - # Run tests for a specific file
+    - yarn test path/to/test.ts
+    - ```
+- Assignment text
+  - Background
+    - Customer Relationship Management (CRM) applications, like Zendesk, are central to many businesses. They help support and sales teams manage diverse customer interactions while integrating with other essential tools.
+    - CRMs often direct users to FAQs and help articles before allowing them to submit a ticket. However, many issues still require manual support, making CRMs one of the biggest sources of human labor.
+    - AutoCRM leverages generative AI to minimize this workload and enhance the customer experience. By integrating existing help resources with the capabilities of LLMs, AutoCRM delivers an interactive support and sales experience with minimal human involvement. While some tickets may still require manual handling, the threshold is significantly raised, improving operational efficiency and boosting profitability.
+  - Submission Guidelines
+    - At the end of each week, you’ll need to submit the following to the GauntletAI LMS:
+    - A link to your project’s GitHub repository.
+    - The Brainlifts you used to learn about and enhance the application.
+    - A 5-minute walkthrough showcasing what you’ve built (and, where relevant, how you built it).
+    - A link to your project post on X, along with evidence of engagement with any feedback received.
+    - A link to the working deployed application.
+  - Baseline App (Week 1)
+    - Building a Modern Customer Support System
+      - Creating a modern customer support system requires a balanced focus on technical architecture, user experience, and customer-facing features. This document outlines the core functionalities required for a robust, scalable, and adaptable system. Your goal is to rebuild as many of the following components as possible.
+      - Core Architecture
+      - Ticket Data Model
+      - The ticket system is central to AutoCRM, treated as a living document that captures the entire customer interaction journey. Key components include:
+      - Standard Identifiers & Timestamps: Basic fields like ticket ID, creation date, and status updates.
+      - Flexible Metadata:
+        - Dynamic Status Tracking: Reflects team workflows.
+        - Priority Levels: Manage response times effectively.
+        - Custom Fields: Tailor tickets to specific business needs.
+        - Tags: Enable categorization and automation.
+        - Internal Notes: Facilitate team collaboration.
+        - Full Conversation History: Includes interactions between customers and team members.
+    - API-First Design
+    - Employee Interface
+      - Queue Management
+      - Customizable Views: Prioritize tickets effectively.
+      - Real-Time Updates: Reflect changes instantly.
+      - Quick Filters: Focus on ticket states and priorities.
+      - Bulk Operations: Streamline repetitive tasks.
+      - Ticket Handling
+      - Customer History: Display detailed interaction logs.
+      - Rich Text Editing: Craft polished responses.
+      - Quick Responses: Use macros and templates.
+      - Collaboration Tools: Share internal notes and updates.
+    - Performance Tools
+      - Metrics Tracking: Monitor response times and resolution rates.
+      - Template Management: Optimize frequently used responses.
+      - Personal Stats: Help agents improve efficiency.
+      - Administrative Control
+      - Team Management
+      - Create and manage teams with specific focus areas.
+      - Assign agents based on skills.
+      - Set coverage schedules and monitor team performance.
+      - Routing Intelligence
+      - Rule-Based Assignment: Match tickets using properties.
+      - Skills-Based Routing: Assign issues based on expertise.
+      - Load Balancing: Optimize workload distribution across teams and time zones.
+    - An API-first approach ensures accessibility and scalability, enabling:
+      - Integration: Connect seamlessly with websites, applications, and external tools.
+      - Automation: Simplify routine tasks and workflows.
+      - AI Enhancements: Lay the groundwork for future features.
+      - Analytics: Support robust reporting and insights.
+      - API Features:
+      - Synchronous Endpoints: Handle immediate operations.
+      - Webhooks: Support event-driven architectures.
+      - Granular Permissions: Ensure secure integrations using API key authentication.
+    - Data Management
+      - Schema Flexibility
+      - Easy Field Addition: Add new fields and relationships.
+      - Migration System: Simplify schema updates.
+      - Audit Logging: Track all changes.
+      - Archival Strategies: Manage historical data efficiently.
+      - Performance Optimization
+      - Caching: Reduce load for frequently accessed data.
+      - Query Optimization: Improve system efficiency.
+      - Scalable Storage: Handle attachments and large datasets.
+      - Regular Maintenance: Ensure smooth operation.
+    - Customer Features
+    - Customer Portal
+      - Ticket Tracking: Allow customers to view, update, and track their tickets.
+      - History of Interactions: Display previous communications and resolutions.
+      - Secure Login: Ensure privacy with authentication.
+      - Self-Service Tools
+      - Knowledge Base: Provide searchable FAQs and help articles.
+      - AI-Powered Chatbots: Offer instant answers to repetitive queries.
+      - Interactive Tutorials: Guide customers through common issues step-by-step.
+      - Communication Tools
+      - Live Chat: Enable real-time support conversations.
+      - Email Integration: Allow ticket creation and updates directly via email.
+      - Web Widgets: Embed support tools on customer-facing websites or apps.
+      - Feedback and Engagement
+      - Issue Feedback: Collect feedback after ticket resolution.
+      - Ratings System: Let customers rate their support experience.
+      - Multi-Channel Support
+      - Mobile-Friendly Design: Ensure support tools work on all devices.
+      - Omnichannel Integration: Support interactions via chat, social media, and SMS.
+      - Advanced Features
+      - Personalized Suggestions: Use AI to recommend relevant articles or guides.
+      - Proactive Notifications: Alert customers about ticket updates or events.
+      - Multilingual Support: Offer help in multiple languages.
+    - 
+    - Test-to-pass
+      - Test2Pass (T2P) requirements
+      - . Brainlift Documentation
+      - Required Sections:
+        - Purpose: Clearly outlines the goal of the application and what it aims to solve.
+        - Experts: Details expertise consulted (e.g., domain experts or credible references).
+        - Spiky POVs: Highlights key insights or unique perspectives that guided the approach.
+        - Knowledge Tree: Maps key concepts and their interconnections.
+      - External Resources:
+        - References at least 5 relevant, high-quality external resources.
+        - Sources should be credible and directly inform the project’s implementation.
+      - Impact:
+        - Demonstrates how the Brainlift meaningfully shapes LLM behavior when provided as contextual input.
+      - Video Walkthrough (e.g., Loom)
+      - Length: 3-5 minutes.
+      - Accessibility: Shared publicly (via a platform link).
+      - Content:
+        - Demonstrates the entire ticket lifecycle from creation to resolution.
+        - Highlights AI agent support, including response generation, routing, and human-in-the-loop workflows.
+      - Git Repository
+      - Source Code:
+        - High-quality, production-grade code.
+        - Passes autograder checks for style, formatting, and best practices.
+      - Testing:
+        - Tests written and passing for all critical path code (e.g., logic impacting ticket management workflows).
+        - Includes unit tests, and edge cases.
+      - CI/CD:
+        - Some CI/CD pipelines are implemented and functional.
+        - Automated build, test, and deploy processes integrated into the workflow.
+- 
+
+
