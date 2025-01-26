@@ -7,7 +7,6 @@ import { KanbanBoard } from './KanbanBoard'
 import './KanbanBoard.css'
 
 interface TicketsViewProps {
-  user: User
   ticketService: TicketService
 }
 
@@ -17,7 +16,7 @@ interface FormErrors {
   coating_color?: string
 }
 
-export function TicketsView({ user, ticketService }: TicketsViewProps) {
+export function TicketsView({ ticketService }: TicketsViewProps) {
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [formData, setFormData] = useState<TicketData>({
     customer_name: '',
@@ -149,15 +148,6 @@ export function TicketsView({ user, ticketService }: TicketsViewProps) {
       setShowForm(false)
     } catch (error) {
       setErrors([error instanceof Error ? error.message : 'Failed to create ticket'])
-    }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      await ticketService.deleteTicket(id)
-      // The delete will be handled by the realtime subscription
-    } catch (error) {
-      setErrors([error instanceof Error ? error.message : 'Failed to delete ticket'])
     }
   }
 

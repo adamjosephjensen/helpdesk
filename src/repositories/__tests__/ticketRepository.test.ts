@@ -2,46 +2,33 @@ import { describe, it, expect, vi } from 'vitest'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { SupabaseTicketRepository } from '../ticketRepository'
 import { TicketData } from '../../domain/ticket'
+import { PostgrestBuilder } from '@supabase/postgrest-js'
 
 describe('SupabaseTicketRepository', () => {
   function createMockSupabaseClient() {
-    // Create a builder object that has all possible chain methods
-    const createBuilder = () => {
-      const builder: any = {
-        select: vi.fn(() => builder),
-        delete: vi.fn(() => builder),
-        insert: vi.fn(() => builder),
-        eq: vi.fn(() => builder),
-        order: vi.fn(() => builder),
-        single: vi.fn(() => builder),
-        // Mock response for each terminal operation
-        then: vi.fn((callback) => Promise.resolve(callback(builder._response))),
-        _response: {
-          data: null,
-          error: null,
-          count: null,
-          status: 200,
-          statusText: 'OK'
-        },
-        // Method to set the mock response
-        mockResolvedValue: function(response: any) {
-          this._response = {
-            ...response,
-            count: response.count ?? null,
-            status: response.status ?? 200,
-            statusText: response.statusText ?? 'OK'
-          }
-          return this
-        }
-      }
-      return builder
+    const mockResponse = {
+      data: null,
+      error: null,
+      count: null,
+      status: 200,
+      statusText: 'OK'
     }
 
-    const mockBuilder = createBuilder()
-    const mockFrom = vi.fn(() => mockBuilder)
+    const builder = {
+      select: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      insert: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      then: vi.fn(() => Promise.resolve(mockResponse)),
+      setResponse(response: typeof mockResponse) {
+        this.then = vi.fn(() => Promise.resolve(response))
+        return this
+      }
+    }
 
     return {
-      from: mockFrom,
+      from: vi.fn().mockReturnValue(builder),
       channel: vi.fn(() => ({
         on: vi.fn().mockReturnThis(),
         subscribe: vi.fn()
@@ -71,7 +58,7 @@ describe('SupabaseTicketRepository', () => {
       }
       
       const builder = mockSupabase.from('tickets')
-      builder.single.mockResolvedValue(mockResponse)
+      builder.setResponse(mockResponse)
 
       const minimalData: TicketData = {
         customer_name: 'John Doe',
@@ -107,7 +94,7 @@ describe('SupabaseTicketRepository', () => {
       }
       
       const builder = mockSupabase.from('tickets')
-      builder.single.mockResolvedValue(mockResponse)
+      builder.setResponse(mockResponse)
 
       const dataWithFinish: TicketData = {
         customer_name: 'John Doe',
@@ -127,7 +114,7 @@ describe('SupabaseTicketRepository', () => {
       const repo = new SupabaseTicketRepository(mockSupabase)
       
       const builder = mockSupabase.from('tickets')
-      builder.single.mockResolvedValue({
+      builder.setResponse({
         data: null,
         error: new Error('Database error')
       })
@@ -148,7 +135,7 @@ describe('SupabaseTicketRepository', () => {
       const repo = new SupabaseTicketRepository(mockSupabase)
       
       const builder = mockSupabase.from('tickets')
-      builder.eq.mockResolvedValue({
+      builder.setResponse({
         data: null,
         error: null
       })
@@ -180,7 +167,7 @@ describe('SupabaseTicketRepository', () => {
       }]
 
       const builder = mockSupabase.from('tickets')
-      builder.order.mockResolvedValue({
+      builder.setResponse({
         data: mockTickets,
         error: null
       })
