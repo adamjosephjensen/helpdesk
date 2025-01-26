@@ -16,8 +16,10 @@ Assignment 2 Brainlift
     - Checks verify assertions
     - Tests involve exploring the behavior of a system
 - Knowledge tree
+  - How to use aws amplify to deploy a react app
+    - [https://docs.aws.amazon.com/amplify/latest/userguide/getting-started.html](https://docs.aws.amazon.com/amplify/latest/userguide/getting-started.html)  
   - Testing and checking refined (blog post) 
-    - The main idea is that testing and checking are different, and we need different words for them because if all we ever do is check, then we will never do the more exploratory kind of testing required to develop a theory of a program.
+    - The main idea is that testing and checking are d:wifferent, and we need different words for them because if all we ever do is check, then we will never do the more exploratory kind of testing required to develop a theory of a program.
     - [https://www.satisfice.com/blog/archives/856](https://www.satisfice.com/blog/archives/856)
   - Cannon Test Driven Development
     - [https://tidyfirst.substack.com/p/canon-tdd](https://tidyfirst.substack.com/p/canon-tdd)

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { ItemsService } from '../services/items.service'
+import { PostgrestQueryBuilder } from '@supabase/postgrest-js'
 
 // Mock Supabase client
 vi.mock('@supabase/supabase-js', () => {
@@ -14,11 +15,32 @@ vi.mock('@supabase/supabase-js', () => {
         insert: vi.fn(),
         update: vi.fn(),
         delete: vi.fn(),
-        eq: vi.fn()
+        eq: vi.fn(),
+        url: '',
+        headers: {},
+        upsert: vi.fn()
       })),
       channel: vi.fn(() => ({
         on: mockOn,
-        subscribe: mockSubscribe
+        subscribe: mockSubscribe,
+        topic: '',
+        params: {},
+        socket: {} as any,
+        bindings: {},
+        state: 'SUBSCRIBED',
+        unsubscribe: vi.fn(),
+        send: vi.fn(),
+        push: vi.fn(),
+        rejoinUntilConnected: vi.fn(),
+        trigger: vi.fn(),
+        resubscribe: vi.fn(),
+        track: vi.fn(),
+        untrack: vi.fn(),
+        isMember: vi.fn(),
+        leave: vi.fn(),
+        onClose: vi.fn(),
+        onError: vi.fn(),
+        onMessage: vi.fn()
       }))
     }))
   }
@@ -35,8 +57,11 @@ describe('ItemsService Collaboration Tests', () => {
       const selectMock = vi.fn().mockResolvedValue({ data: mockItems, error: null })
       vi.mocked(mockSupabase.from).mockReturnValue({
         ...mockSupabase.from('items'),
-        select: selectMock
-      } as any)
+        select: selectMock,
+        url: '',
+        headers: {},
+        upsert: vi.fn()
+      } as unknown as PostgrestQueryBuilder<any, any, any, unknown>)
 
       // Create a new instance with our mocked client
       const service = new ItemsService(mockSupabase)
@@ -89,8 +114,11 @@ describe('ItemsService Contract Tests', () => {
 
     vi.mocked(mockSupabase.from).mockReturnValue({
       ...mockSupabase.from('items'),
-      select: vi.fn().mockResolvedValue({ data: [mockItem], error: null })
-    } as any)
+      select: vi.fn().mockResolvedValue({ data: [mockItem], error: null }),
+      url: '',
+      headers: {},
+      upsert: vi.fn()
+    } as unknown as PostgrestQueryBuilder<any, any, any, unknown>)
 
     const service = new ItemsService(mockSupabase)
     const items = await service.getItems()

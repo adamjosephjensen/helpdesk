@@ -43,7 +43,7 @@ export default function App() {
         <span>Welcome, {user.email}</span>
         <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
       </div>
-      <TicketsView user={user} ticketService={ticketService} />
+      <TicketsView ticketService={ticketService} />
     </div>
   )
 }

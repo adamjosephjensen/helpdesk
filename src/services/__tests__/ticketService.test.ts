@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { TicketService } from '../ticketService'
 import { TicketRepository } from '../../repositories/ticketRepository'
 import { TicketData } from '../../domain/ticket'
-import { Ticket, TicketStatus } from '../../types/ticket'
+import { Ticket } from '../../types/ticket'
 
 describe('TicketService', () => {
   const mockTicket: Ticket = {

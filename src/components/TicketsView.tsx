@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { User } from '@supabase/supabase-js'
 import { TicketService } from '../services/ticketService'
 import { TicketData, CoatingFinish } from '../domain/ticket'
 import { Ticket } from '../types/ticket'
