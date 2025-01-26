@@ -5,6 +5,8 @@ applications:
         preBuild:
           commands:
             - yarn install --frozen-lockfile
+            - echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL" >> .env
+            - echo "VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY" >> .env
         build:
           commands:
             - yarn build
@@ -15,4 +17,5 @@ applications:
       cache:
         paths:
           - node_modules/**/*
-    appRoot: . 
+          - .yarn/cache/**/*
+    appRoot: .
